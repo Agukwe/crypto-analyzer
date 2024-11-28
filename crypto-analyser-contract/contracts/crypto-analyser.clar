@@ -80,3 +80,53 @@
         })
     )
 )
+;; Public functions
+
+(define-public (set-coin-price (coin (string-ascii 10)) (price uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (asserts! (> price u0) err-invalid-price)
+        (asserts! (validate-coin coin) err-invalid-coin)
+        
+        (let ((new-data (unwrap! (update-coin-data coin price (map-get? CoinPrices { coin: coin })) err-invalid-coin)))
+            (ok (map-set CoinPrices
+                { coin: coin }
+                new-data
+            ))
+        )
+    )
+)
+
+(define-public (set-profitability-threshold (coin (string-ascii 10)) (threshold uint))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (asserts! (validate-coin coin) err-invalid-coin)
+        (asserts! (> threshold u0) err-invalid-threshold)
+        (ok (map-set ProfitabilitySettings
+            { coin: coin }
+            { threshold: threshold }
+        ))
+    )
+)
+
+;; Read-only functions
+
+(define-read-only (get-coin-data (coin (string-ascii 10)))
+    (match (map-get? CoinPrices { coin: coin })
+        entry (ok entry)
+        (ok {
+            current-price: u0,
+            previous-price: u0,
+            timestamp: u0,
+            percentage-change: 0,
+            is-profitable: false
+        })
+    )
+)
+
+(define-read-only (get-profitability-threshold (coin (string-ascii 10)))
+    (default-to
+        { threshold: u200 } ;; Default 2% threshold (multiplied by 100)
+        (map-get? ProfitabilitySettings { coin: coin })
+    )
+)
