@@ -50,3 +50,70 @@
         )
     )
 )
+
+;; Public functions
+(define-public (update-analytics (base-contract <base-trait>) (coin (string-utf8 10)))
+    (let ((coin-data (try! (contract-call? base-contract get-coin-data coin))))
+        (let ((current-price (get current-price coin-data))
+              (history (default-to {prices: (list)} (map-get? price-history {coin: coin}))))
+            (let ((new-prices (unwrap! (as-max-len? (append (get prices history) current-price) u30) err-history-full)))
+                (let ((sma7 (calculate-sma new-prices))
+                      (sma30 (calculate-sma new-prices)))
+                    (begin
+                        (map-set price-history {coin: coin} {prices: new-prices})
+                        (map-set moving-averages
+                            {coin: coin}
+                            {
+                                sma-7: sma7,
+                                sma-30: sma30,
+                                volatility: (/ (* sma7 PERCENTAGE_MULTIPLIER) sma30)
+                            }
+                        )
+                        (ok (map-set trading-signals
+                            {coin: coin}
+                            {
+                                trend: (get-trend current-price sma7 sma30),
+                                strength: (/ (* (- sma7 sma30) PERCENTAGE_MULTIPLIER) sma30),
+                                support: (fold min new-prices current-price),
+                                resistance: (fold max new-prices current-price)
+                            }
+                        ))
+                    )
+                )
+            )
+        )
+    )
+)
+
+;; Read-only functions
+(define-read-only (get-analytics (coin (string-utf8 10)))
+    (ok {
+        history: (map-get? price-history {coin: coin}),
+        averages: (map-get? moving-averages {coin: coin}),
+        signals: (map-get? trading-signals {coin: coin})
+    })
+)
+
+(define-read-only (get-momentum (coin (string-utf8 10)))
+    (let ((avgs (default-to 
+            {sma-7: u0, sma-30: u0, volatility: u0} 
+            (map-get? moving-averages {coin: coin}))))
+        (ok {
+            short-term: (get sma-7 avgs),
+            long-term: (get sma-30 avgs),
+            momentum: (- (get sma-7 avgs) (get sma-30 avgs))
+        })
+    )
+)
+
+(define-read-only (is-golden-cross (coin (string-utf8 10)))
+    (let ((avgs (default-to 
+            {sma-7: u0, sma-30: u0, volatility: u0}
+            (map-get? moving-averages {coin: coin}))))
+        (ok (and
+            (> (get sma-7 avgs) (get sma-30 avgs))
+            (> (get sma-7 avgs) u0)
+            (> (get sma-30 avgs) u0)
+        ))
+    )
+)
