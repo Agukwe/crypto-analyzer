@@ -33,3 +33,20 @@
         resistance: uint
     }
 )
+
+;; Helper functions
+(define-private (calculate-sma (prices (list 30 uint)))
+    (let ((sum (fold + prices u0)))
+        (/ sum (len prices))
+    )
+)
+
+(define-private (get-trend (current-price uint) (sma7 uint) (sma30 uint))
+    (if (and (> current-price sma7) (> sma7 sma30))
+        "bullish"
+        (if (and (< current-price sma7) (< sma7 sma30))
+            "bearish"
+            "neutral"
+        )
+    )
+)
