@@ -93,3 +93,27 @@
         signals: (map-get? trading-signals {coin: coin})
     })
 )
+
+(define-read-only (get-momentum (coin (string-utf8 10)))
+    (let ((avgs (default-to 
+            {sma-7: u0, sma-30: u0, volatility: u0} 
+            (map-get? moving-averages {coin: coin}))))
+        (ok {
+            short-term: (get sma-7 avgs),
+            long-term: (get sma-30 avgs),
+            momentum: (- (get sma-7 avgs) (get sma-30 avgs))
+        })
+    )
+)
+
+(define-read-only (is-golden-cross (coin (string-utf8 10)))
+    (let ((avgs (default-to 
+            {sma-7: u0, sma-30: u0, volatility: u0}
+            (map-get? moving-averages {coin: coin}))))
+        (ok (and
+            (> (get sma-7 avgs) (get sma-30 avgs))
+            (> (get sma-7 avgs) u0)
+            (> (get sma-30 avgs) u0)
+        ))
+    )
+)
