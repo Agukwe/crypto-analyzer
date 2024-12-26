@@ -50,3 +50,37 @@
         )
     )
 )
+
+;; Public functions
+(define-public (update-analytics (base-contract <base-trait>) (coin (string-utf8 10)))
+    (let ((coin-data (try! (contract-call? base-contract get-coin-data coin))))
+        (let ((current-price (get current-price coin-data))
+              (history (default-to {prices: (list)} (map-get? price-history {coin: coin}))))
+            (let ((new-prices (unwrap! (as-max-len? (append (get prices history) current-price) u30) err-history-full)))
+                (let ((sma7 (calculate-sma new-prices))
+                      (sma30 (calculate-sma new-prices)))
+                    (begin
+                        (map-set price-history {coin: coin} {prices: new-prices})
+                        (map-set moving-averages
+                            {coin: coin}
+                            {
+                                sma-7: sma7,
+                                sma-30: sma30,
+                                volatility: (/ (* sma7 PERCENTAGE_MULTIPLIER) sma30)
+                            }
+                        )
+                        (ok (map-set trading-signals
+                            {coin: coin}
+                            {
+                                trend: (get-trend current-price sma7 sma30),
+                                strength: (/ (* (- sma7 sma30) PERCENTAGE_MULTIPLIER) sma30),
+                                support: (fold min new-prices current-price),
+                                resistance: (fold max new-prices current-price)
+                            }
+                        ))
+                    )
+                )
+            )
+        )
+    )
+)
