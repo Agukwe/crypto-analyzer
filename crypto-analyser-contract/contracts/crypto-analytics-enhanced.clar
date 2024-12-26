@@ -84,3 +84,12 @@
         )
     )
 )
+
+;; Read-only functions
+(define-read-only (get-analytics (coin (string-utf8 10)))
+    (ok {
+        history: (map-get? price-history {coin: coin}),
+        averages: (map-get? moving-averages {coin: coin}),
+        signals: (map-get? trading-signals {coin: coin})
+    })
+)
