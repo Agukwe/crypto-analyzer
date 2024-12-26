@@ -8,6 +8,10 @@ requirements = []
 path = "contracts/crypto-analyser.clar"
 depends_on = []
 
+[contracts.crypto-analytics-enhanced]
+path = "contracts/crypto-analytics-enhanced.clar"
+depends_on = []
+
 [repl]
 costs_version = 2
 parser_version = 2
